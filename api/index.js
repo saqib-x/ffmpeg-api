@@ -13,6 +13,12 @@ app.use(cors());
 app.use(express.json());
 
 // Merge videos using FFmpeg
+
+app.get("/", (req, res) => {
+  res.send("✅ FFmpeg API is running successfully on Railway!");
+});
+
+
 app.post("/merge", async (req, res) => {
   try {
     const { input } = req.body; // Array of video URLs
