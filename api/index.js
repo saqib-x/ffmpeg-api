@@ -30,15 +30,12 @@ app.post("/merge", async (req, res) => {
       input.map(async (url, i) => {
         const filePath = path.join(tempFolder, `video${i}.mp4`);
         const response = await fetch(url);
-        const dest = fs.createWriteStream(filePath);
-        await new Promise((resolve, reject) => {
-          response.body.pipe(dest);
-          response.body.on("error", reject);
-          dest.on("finish", resolve);
-        });
+        const buffer = Buffer.from(await response.arrayBuffer());
+        fs.writeFileSync(filePath, buffer);
         return filePath;
       })
     );
+
 
     const listFilePath = path.join(tempFolder, "list.txt");
     fs.writeFileSync(
@@ -65,5 +62,5 @@ app.post("/merge", async (req, res) => {
   }
 });
 
-// 👇 Yeh line zaroori hai Vercel ke liye
+
 export default app;
