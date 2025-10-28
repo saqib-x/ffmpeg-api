@@ -1,150 +1,69 @@
-// import express from "express";
-// import { exec } from "child_process";
-// import cors from "cors";
-// import fs from "fs";
-// import path from "path";
-// import { fileURLToPath } from "url";
-
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
-
-// const app = express();
-// app.use(cors());
-// app.use(express.json());
-
-// // Merge videos using FFmpeg
-
-// app.get("/", (req, res) => {
-//   res.send("✅ FFmpeg API is running successfully on Railway!");
-// });
-
-
-// app.post("/merge", async (req, res) => {
-//   try {
-//     const { input } = req.body; // Array of video URLs
-//     if (!input || input.length === 0) {
-//       return res.status(400).json({ error: "No input videos provided" });
-//     }
-
-//     const tempFolder = path.join(__dirname, "temp");
-//     if (!fs.existsSync(tempFolder)) fs.mkdirSync(tempFolder);
-
-//     // Download each video
-//     const downloadedFiles = await Promise.all(
-//       input.map(async (url, i) => {
-//         const filePath = path.join(tempFolder, `video${i}.mp4`);
-//         await fetch(url).then(res => {
-//           const dest = fs.createWriteStream(filePath);
-//           return new Promise((resolve, reject) => {
-//             res.body.pipe(dest);
-//             res.body.on("error", reject);
-//             dest.on("finish", resolve);
-//           });
-//         });
-//         return filePath;
-//       })
-//     );
-
-//     // Create file list for FFmpeg
-//     const listFilePath = path.join(tempFolder, "list.txt");
-//     fs.writeFileSync(
-//       listFilePath,
-//       downloadedFiles.map(file => `file '${file}'`).join("\n")
-//     );
-
-//     const outputFile = path.join(tempFolder, "output.mp4");
-
-//     // Run FFmpeg command
-//     exec(
-//       `ffmpeg -f concat -safe 0 -i "${listFilePath}" -c copy "${outputFile}"`,
-//       (error) => {
-//         if (error) {
-//           console.error(error);
-//           return res.status(500).json({ error: "FFmpeg failed" });
-//         }
-//         res.download(outputFile, "merged.mp4", () => {
-//           fs.rmSync(tempFolder, { recursive: true, force: true });
-//         });
-//       }
-//     );
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-// const PORT = process.env.PORT || 8000;
-// app.listen(PORT, () => console.log(`🎥 FFmpeg API running on port ${PORT}`));
-
-
-
-
-
+import express from "express";
 import { exec } from "child_process";
+import cors from "cors";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-export const config = {
-  runtime: "nodejs20"
-};
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default async function handler(req, res) {
-  if (req.method === "GET") {
-    return res.status(200).send("✅ FFmpeg API is running successfully on Vercel!");
-  }
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-  if (req.method === "POST") {
-    try {
-      const { input } = req.body;
-      if (!input || input.length === 0) {
-        return res.status(400).json({ error: "No input videos provided" });
-      }
+app.get("/", (req, res) => {
+  res.send("✅ FFmpeg API is running successfully on Vercel!");
+});
 
-      const tempFolder = path.join(__dirname, "temp");
-      if (!fs.existsSync(tempFolder)) fs.mkdirSync(tempFolder);
-
-      const downloadedFiles = await Promise.all(
-        input.map(async (url, i) => {
-          const filePath = path.join(tempFolder, `video${i}.mp4`);
-          const response = await fetch(url);
-          const fileStream = fs.createWriteStream(filePath);
-          await new Promise((resolve, reject) => {
-            response.body.pipe(fileStream);
-            response.body.on("error", reject);
-            fileStream.on("finish", resolve);
-          });
-          return filePath;
-        })
-      );
-
-      const listFilePath = path.join(tempFolder, "list.txt");
-      fs.writeFileSync(
-        listFilePath,
-        downloadedFiles.map((f) => `file '${f}'`).join("\n")
-      );
-
-      const outputFile = path.join(tempFolder, "output.mp4");
-
-      exec(
-        `ffmpeg -f concat -safe 0 -i "${listFilePath}" -c copy "${outputFile}"`,
-        (error) => {
-          if (error) {
-            console.error(error);
-            return res.status(500).json({ error: "FFmpeg failed" });
-          }
-          res.setHeader("Content-Type", "video/mp4");
-          res.download(outputFile, "merged.mp4", () => {
-            fs.rmSync(tempFolder, { recursive: true, force: true });
-          });
-        }
-      );
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+app.post("/merge", async (req, res) => {
+  try {
+    const { input } = req.body;
+    if (!input || input.length === 0) {
+      return res.status(400).json({ error: "No input videos provided" });
     }
-  } else {
-    res.status(405).json({ error: "Method not allowed" });
+
+    const tempFolder = path.join("/tmp", "ffmpeg-temp");
+    if (!fs.existsSync(tempFolder)) fs.mkdirSync(tempFolder);
+
+    const downloadedFiles = await Promise.all(
+      input.map(async (url, i) => {
+        const filePath = path.join(tempFolder, `video${i}.mp4`);
+        const response = await fetch(url);
+        const dest = fs.createWriteStream(filePath);
+        await new Promise((resolve, reject) => {
+          response.body.pipe(dest);
+          response.body.on("error", reject);
+          dest.on("finish", resolve);
+        });
+        return filePath;
+      })
+    );
+
+    const listFilePath = path.join(tempFolder, "list.txt");
+    fs.writeFileSync(
+      listFilePath,
+      downloadedFiles.map((f) => `file '${f}'`).join("\n")
+    );
+
+    const outputFile = path.join(tempFolder, "output.mp4");
+
+    exec(
+      `ffmpeg -f concat -safe 0 -i "${listFilePath}" -c copy "${outputFile}"`,
+      (error) => {
+        if (error) {
+          console.error(error);
+          return res.status(500).json({ error: "FFmpeg failed" });
+        }
+        res.download(outputFile, "merged.mp4", () => {
+          fs.rmSync(tempFolder, { recursive: true, force: true });
+        });
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-}
+});
+
+// 👇 Yeh line zaroori hai Vercel ke liye
+export default app;
